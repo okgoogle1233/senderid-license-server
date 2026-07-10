@@ -4,63 +4,81 @@ const { Pool } = require('pg');
 const { daysRemaining, licenseMeta } = require('./shared');
 
 let pool;
+let schema;
 
-const SCHEMA = `
-  CREATE TABLE IF NOT EXISTS licenses (
-    id SERIAL PRIMARY KEY,
-    license_key TEXT NOT NULL UNIQUE,
-    label TEXT,
-    max_devices INTEGER NOT NULL DEFAULT 1,
-    valid_days INTEGER,
-    activated_at TIMESTAMPTZ,
-    expires_at TIMESTAMPTZ,
-    revoked BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
+function sanitizeSchema(name) {
+  const s = (name || 'senderid_license').replace(/[^a-zA-Z0-9_]/g, '');
+  if (!s) throw new Error('Invalid PG_SCHEMA');
+  return s;
+}
 
-  CREATE TABLE IF NOT EXISTS devices (
-    id SERIAL PRIMARY KEY,
-    license_id INTEGER NOT NULL REFERENCES licenses(id),
-    device_hash TEXT NOT NULL,
-    apk_signature TEXT NOT NULL,
-    build_fingerprint TEXT,
-    version_code INTEGER,
-    last_seen_at TIMESTAMPTZ,
-    revoked BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(license_id, device_hash)
-  );
-
-  CREATE TABLE IF NOT EXISTS activation_log (
-    id SERIAL PRIMARY KEY,
-    license_key TEXT,
-    device_hash TEXT,
-    apk_signature TEXT,
-    success BOOLEAN NOT NULL,
-    reason TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-`;
+function tbl(name) {
+  return `${schema}.${name}`;
+}
 
 async function init() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is required for PostgreSQL');
+
+  schema = sanitizeSchema(process.env.PG_SCHEMA);
+
   pool = new Pool({
     connectionString: url,
     ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
   });
-  await pool.query(SCHEMA);
+
+  // Isolated schema — avoids clashing with other apps' "licenses" tables in public.
+  await pool.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ${tbl('licenses')} (
+      id SERIAL PRIMARY KEY,
+      license_key TEXT NOT NULL UNIQUE,
+      label TEXT,
+      max_devices INTEGER NOT NULL DEFAULT 1,
+      valid_days INTEGER,
+      activated_at TIMESTAMPTZ,
+      expires_at TIMESTAMPTZ,
+      revoked BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS ${tbl('devices')} (
+      id SERIAL PRIMARY KEY,
+      license_id INTEGER NOT NULL REFERENCES ${tbl('licenses')}(id),
+      device_hash TEXT NOT NULL,
+      apk_signature TEXT NOT NULL,
+      build_fingerprint TEXT,
+      version_code INTEGER,
+      last_seen_at TIMESTAMPTZ,
+      revoked BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(license_id, device_hash)
+    );
+
+    CREATE TABLE IF NOT EXISTS ${tbl('activation_log')} (
+      id SERIAL PRIMARY KEY,
+      license_key TEXT,
+      device_hash TEXT,
+      apk_signature TEXT,
+      success BOOLEAN NOT NULL,
+      reason TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  console.log(`PostgreSQL schema ready: ${schema}`);
 }
 
 async function findLicense(key) {
-  const { rows } = await pool.query('SELECT * FROM licenses WHERE license_key = $1', [key]);
+  const { rows } = await pool.query(
+      `SELECT * FROM ${tbl('licenses')} WHERE license_key = $1`, [key]);
   return rows[0] || null;
 }
 
 async function createLicense(key, label, maxDevices, validDays) {
   const days = validDays > 0 ? validDays : null;
   const { rows } = await pool.query(
-      `INSERT INTO licenses (license_key, label, max_devices, valid_days)
+      `INSERT INTO ${tbl('licenses')} (license_key, label, max_devices, valid_days)
        VALUES ($1, $2, $3, $4) RETURNING id`,
       [key, label || null, maxDevices, days]
   );
@@ -72,7 +90,7 @@ async function ensureActivated(license) {
   if (license.activated_at) return license;
   const expires = new Date(Date.now() + license.valid_days * 86400000);
   await pool.query(
-      `UPDATE licenses SET activated_at = NOW(), expires_at = $1 WHERE id = $2`,
+      `UPDATE ${tbl('licenses')} SET activated_at = NOW(), expires_at = $1 WHERE id = $2`,
       [expires, license.id]
   );
   return findLicense(license.license_key);
@@ -85,7 +103,8 @@ function isExpired(license) {
 
 async function countDevices(licenseId) {
   const { rows } = await pool.query(
-      'SELECT COUNT(*)::int AS c FROM devices WHERE license_id = $1 AND revoked = FALSE',
+      `SELECT COUNT(*)::int AS c FROM ${tbl('devices')}
+       WHERE license_id = $1 AND revoked = FALSE`,
       [licenseId]
   );
   return rows[0].c;
@@ -93,7 +112,7 @@ async function countDevices(licenseId) {
 
 async function findDevice(licenseId, deviceHash) {
   const { rows } = await pool.query(
-      'SELECT * FROM devices WHERE license_id = $1 AND device_hash = $2',
+      `SELECT * FROM ${tbl('devices')} WHERE license_id = $1 AND device_hash = $2`,
       [licenseId, deviceHash]
   );
   return rows[0] || null;
@@ -103,7 +122,7 @@ async function upsertDevice(licenseId, deviceHash, apkSignature, buildFingerprin
   const existing = await findDevice(licenseId, deviceHash);
   if (existing) {
     await pool.query(
-        `UPDATE devices
+        `UPDATE ${tbl('devices')}
          SET apk_signature = $1, build_fingerprint = $2, version_code = $3,
              last_seen_at = NOW(), revoked = FALSE
          WHERE id = $4`,
@@ -112,7 +131,8 @@ async function upsertDevice(licenseId, deviceHash, apkSignature, buildFingerprin
     return existing.id;
   }
   const { rows } = await pool.query(
-      `INSERT INTO devices (license_id, device_hash, apk_signature, build_fingerprint, version_code, last_seen_at)
+      `INSERT INTO ${tbl('devices')}
+       (license_id, device_hash, apk_signature, build_fingerprint, version_code, last_seen_at)
        VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id`,
       [licenseId, deviceHash, apkSignature, buildFingerprint, versionCode]
   );
@@ -121,7 +141,7 @@ async function upsertDevice(licenseId, deviceHash, apkSignature, buildFingerprin
 
 async function touchDevice(licenseId, deviceHash) {
   await pool.query(
-      `UPDATE devices SET last_seen_at = NOW()
+      `UPDATE ${tbl('devices')} SET last_seen_at = NOW()
        WHERE license_id = $1 AND device_hash = $2 AND revoked = FALSE`,
       [licenseId, deviceHash]
   );
@@ -129,7 +149,8 @@ async function touchDevice(licenseId, deviceHash) {
 
 async function logActivation(licenseKey, deviceHash, apkSignature, success, reason) {
   await pool.query(
-      `INSERT INTO activation_log (license_key, device_hash, apk_signature, success, reason)
+      `INSERT INTO ${tbl('activation_log')}
+       (license_key, device_hash, apk_signature, success, reason)
        VALUES ($1, $2, $3, $4, $5)`,
       [licenseKey, deviceHash, apkSignature, success, reason || null]
   );
@@ -138,9 +159,10 @@ async function logActivation(licenseKey, deviceHash, apkSignature, success, reas
 async function listLicenses() {
   const { rows } = await pool.query(`
     SELECT l.*, (
-      SELECT COUNT(*)::int FROM devices d WHERE d.license_id = l.id AND d.revoked = FALSE
+      SELECT COUNT(*)::int FROM ${tbl('devices')} d
+      WHERE d.license_id = l.id AND d.revoked = FALSE
     ) AS active_devices
-    FROM licenses l ORDER BY l.id DESC
+    FROM ${tbl('licenses')} l ORDER BY l.id DESC
   `);
   return rows;
 }
@@ -148,8 +170,8 @@ async function listLicenses() {
 async function revokeLicense(licenseKey) {
   const lic = await findLicense(licenseKey);
   if (!lic) return false;
-  await pool.query('UPDATE licenses SET revoked = TRUE WHERE id = $1', [lic.id]);
-  await pool.query('UPDATE devices SET revoked = TRUE WHERE license_id = $1', [lic.id]);
+  await pool.query(`UPDATE ${tbl('licenses')} SET revoked = TRUE WHERE id = $1`, [lic.id]);
+  await pool.query(`UPDATE ${tbl('devices')} SET revoked = TRUE WHERE license_id = $1`, [lic.id]);
   return true;
 }
 
@@ -157,7 +179,8 @@ async function revokeDevice(licenseKey, deviceHash) {
   const lic = await findLicense(licenseKey);
   if (!lic) return false;
   const { rowCount } = await pool.query(
-      'UPDATE devices SET revoked = TRUE WHERE license_id = $1 AND device_hash = $2',
+      `UPDATE ${tbl('devices')} SET revoked = TRUE
+       WHERE license_id = $1 AND device_hash = $2`,
       [lic.id, deviceHash]
   );
   return rowCount > 0;

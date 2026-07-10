@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # Native build tools + keytool for auto APK signature extraction on deploy
-RUN apk add --no-cache openssl python3 make g++ openjdk17-jre
+RUN apk add --no-cache openssl python3 make g++ openjdk17-jre wget
 
 WORKDIR /app
 

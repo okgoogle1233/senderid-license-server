@@ -134,3 +134,5 @@ LICENSE_TOKEN_TTL_SEC=604800
 | `Invalid or missing license token` after redeploy | Mount `/app/keys` persistent volume |
 | `Set ADMIN_SECRET` error | Set `ADMIN_SECRET` in Coolify env vars |
 | DB connection refused | Link Postgres to app in Coolify; check internal hostname |
+| `foreign key constraint cannot be implemented` / `integer and text` | Another app's `licenses` table exists in `public` schema — fixed in latest code by using `senderid_license` schema. Redeploy latest `main`. |
+| Healthcheck unhealthy (no wget) | Fixed in latest Dockerfile — includes `wget`. Redeploy or disable Coolify healthcheck temporarily. |

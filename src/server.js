@@ -20,6 +20,9 @@ app.get('/health', (_req, res) => {
     ok: true,
     service: 'senderid-license-server',
     database: process.env.DATABASE_URL ? 'postgresql' : 'sqlite',
+    schema: process.env.DATABASE_URL
+        ? (process.env.PG_SCHEMA || 'senderid_license')
+        : undefined,
   });
 });
 
