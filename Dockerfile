@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# Native build tools (only needed if SQLite fallback is used without DATABASE_URL)
-RUN apk add --no-cache openssl python3 make g++
+# Native build tools + keytool for auto APK signature extraction on deploy
+RUN apk add --no-cache openssl python3 make g++ openjdk17-jre
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-RUN chmod +x docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh scripts/resolve-allowed-signatures.sh
 
 ENV NODE_ENV=production
 ENV PORT=3847

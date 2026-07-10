@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "generate-keys": "node scripts/generate-keys.js",
-    "create-license": "node scripts/create-license.js"
+    "create-license": "node scripts/create-license.js",
+    "extract-signature": "node scripts/extract-signature.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

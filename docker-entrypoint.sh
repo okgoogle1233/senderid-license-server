@@ -7,4 +7,10 @@ if [ ! -f /app/keys/private.pem ]; then
   node scripts/generate-keys.js
 fi
 
+# Auto-set ALLOWED_APK_SIGNATURES from keystore/APK on deploy (if not already set)
+if [ -f /app/scripts/resolve-allowed-signatures.sh ]; then
+  chmod +x /app/scripts/resolve-allowed-signatures.sh
+  . /app/scripts/resolve-allowed-signatures.sh
+fi
+
 exec node src/server.js

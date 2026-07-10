@@ -41,7 +41,10 @@ This guide deploys **senderid-license-server** on [Coolify](https://coolify.io) 
    |----------|----------|---------|
    | `ADMIN_SECRET` | Yes | long random string |
    | `DATABASE_URL` | Yes | from Coolify Postgres |
-   | `ALLOWED_APK_SIGNATURES` | Prod | your APK cert SHA-256 |
+   | `ALLOWED_APK_SIGNATURES` | Prod | auto from keystore (below) or set manually |
+   | `RELEASE_KEYSTORE_BASE64` | Prod | base64 of `release.keystore` (auto-sets signature) |
+   | `KEYSTORE_PASSWORD` | Prod | keystore password |
+   | `KEYSTORE_ALIAS` | Prod | default `senderid` |
    | `PORT` | Auto | Coolify sets this |
 
 7. **Persistent storage** — add a volume mount (important):
@@ -84,7 +87,27 @@ Health check: `curl http://localhost:3847/health`
 
    Rebuild the APK and set `LICENSE_SERVER` in `app/build.gradle` to your Coolify URL.
 
-3. **Set `ALLOWED_APK_SIGNATURES`** to your release keystore SHA-256.
+3. **APK signature** — auto on deploy (recommended) or manual:
+
+   **Auto (Coolify):** add these env vars instead of `ALLOWED_APK_SIGNATURES`:
+
+   ```bash
+   # On your Mac — encode keystore as one line:
+   base64 -i release.keystore | tr -d '\n'
+   ```
+
+   Paste into Coolify as `RELEASE_KEYSTORE_BASE64`, plus:
+
+   ```
+   KEYSTORE_PASSWORD=senderid123
+   KEYSTORE_ALIAS=senderid
+   ```
+
+   On container start, the entrypoint runs `keytool`, sets `ALLOWED_APK_SIGNATURES` automatically.
+
+   **Manual:** `npm run extract-signature -- release.keystore password alias`
+
+4. **Set `ALLOWED_APK_SIGNATURES`** manually only if not using auto-detect above.
 
 ---
 
