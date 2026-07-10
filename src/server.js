@@ -15,6 +15,21 @@ const port = parseInt(process.env.PORT || '3847', 10);
 app.use(cors());
 app.use(express.json({ limit: '32kb' }));
 
+app.get('/', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'senderid-license-server',
+    status: 'running',
+    endpoints: {
+      health: 'GET /health',
+      publicKey: 'GET /api/license/public-key',
+      activate: 'POST /api/license/activate',
+      heartbeat: 'POST /api/license/heartbeat',
+      admin: 'POST /api/admin/licenses (Bearer ADMIN_SECRET)',
+    },
+  });
+});
+
 app.get('/health', (_req, res) => {
   res.json({
     ok: true,
