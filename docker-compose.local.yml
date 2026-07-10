@@ -1,0 +1,14 @@
+# Local Mac test overlay — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+services:
+  license-server:
+    ports:
+      - "3847:3847"
+    volumes:
+      - ../release.keystore:/secrets/release.keystore:ro
+      - ../SmsSenderIdInjector.apk:/secrets/SmsSenderIdInjector.apk:ro
+    environment:
+      ADMIN_SECRET: local-docker-test-secret-do-not-use-in-prod
+      KEYSTORE_PATH: /secrets/release.keystore
+      KEYSTORE_PASSWORD: senderid123
+      KEYSTORE_ALIAS: senderid
