@@ -5,6 +5,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const crypto = require('./crypto');
+const { initStore } = require('./store');
 const licenseRoutes = require('./routes/license');
 const adminRoutes = require('./routes/admin');
 
@@ -15,7 +16,11 @@ app.use(cors());
 app.use(express.json({ limit: '32kb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'senderid-license-server' });
+  res.json({
+    ok: true,
+    service: 'senderid-license-server',
+    database: process.env.DATABASE_URL ? 'postgresql' : 'sqlite',
+  });
 });
 
 app.get('/api/license/public-key', (_req, res) => {
@@ -30,8 +35,16 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ ok: false, error: 'Internal server error' });
 });
 
-app.listen(port, () => {
-  console.log(`License server listening on http://0.0.0.0:${port}`);
-  console.log('Health: GET /health');
-  console.log('Create license: npm run create-license -- YOUR-KEY-HERE');
+async function main() {
+  const { driver } = await initStore();
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`License server listening on http://0.0.0.0:${port}`);
+    console.log(`Database: ${driver}`);
+    console.log('Health: GET /health');
+  });
+}
+
+main().catch((err) => {
+  console.error('Failed to start:', err);
+  process.exit(1);
 });

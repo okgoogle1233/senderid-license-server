@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const store = require('../db');
+const { getStore } = require('../store');
 
 const router = express.Router();
 
@@ -24,17 +24,18 @@ function adminAuth(req, res, next) {
 router.use(adminAuth);
 
 /** POST /api/admin/licenses { licenseKey, label?, maxDevices?, validDays? } */
-router.post('/licenses', (req, res) => {
+router.post('/licenses', async (req, res) => {
+  const store = getStore();
   const { licenseKey, label, maxDevices, validDays } = req.body || {};
   if (!licenseKey || typeof licenseKey !== 'string' || licenseKey.length < 8) {
     return res.status(400).json({ ok: false, error: 'licenseKey required (min 8 chars)' });
   }
-  if (store.findLicense(licenseKey)) {
+  if (await store.findLicense(licenseKey)) {
     return res.status(409).json({ ok: false, error: 'License already exists' });
   }
   const days = parseInt(validDays, 10);
-  const id = store.createLicense(licenseKey, label, maxDevices || 1, days);
-  const license = store.findLicense(licenseKey);
+  const id = await store.createLicense(licenseKey, label, maxDevices || 1, days);
+  const license = await store.findLicense(licenseKey);
   return res.json({
     ok: true,
     id,
@@ -45,25 +46,28 @@ router.post('/licenses', (req, res) => {
 });
 
 /** GET /api/admin/licenses */
-router.get('/licenses', (_req, res) => {
-  return res.json({ ok: true, licenses: store.listLicenses() });
+router.get('/licenses', async (_req, res) => {
+  const store = getStore();
+  return res.json({ ok: true, licenses: await store.listLicenses() });
 });
 
 /** POST /api/admin/licenses/revoke { licenseKey } */
-router.post('/licenses/revoke', (req, res) => {
+router.post('/licenses/revoke', async (req, res) => {
+  const store = getStore();
   const { licenseKey } = req.body || {};
   if (!licenseKey) return res.status(400).json({ ok: false, error: 'licenseKey required' });
-  const ok = store.revokeLicense(licenseKey);
+  const ok = await store.revokeLicense(licenseKey);
   return res.json({ ok });
 });
 
 /** POST /api/admin/devices/revoke { licenseKey, deviceHash } */
-router.post('/devices/revoke', (req, res) => {
+router.post('/devices/revoke', async (req, res) => {
+  const store = getStore();
   const { licenseKey, deviceHash } = req.body || {};
   if (!licenseKey || !deviceHash) {
     return res.status(400).json({ ok: false, error: 'licenseKey and deviceHash required' });
   }
-  const ok = store.revokeDevice(licenseKey, deviceHash);
+  const ok = await store.revokeDevice(licenseKey, deviceHash);
   return res.json({ ok });
 });
 

@@ -2,7 +2,20 @@
 
 Standalone licensing backend for **SMS Sender ID Injector**. Keeps activation, heartbeat, and inject-token issuance separate from `x.cheifx.be`.
 
-## Quick start
+## Database
+
+| Mode | Engine | How to configure |
+|------|--------|------------------|
+| **Coolify / production** | **PostgreSQL** | Set `DATABASE_URL` env var (from Coolify Postgres resource) |
+| **Local dev** | **SQLite** | Leave `DATABASE_URL` unset → file at `data/licenses.db` |
+
+**Where to add the database link:** set the `DATABASE_URL` environment variable.
+
+- **Coolify:** create a PostgreSQL database → link it to the app (auto-injects `DATABASE_URL`) or paste the Postgres URL manually in **Environment Variables**. See **[COOLIFY.md](./COOLIFY.md)** for one-command deploy steps.
+- **Docker Compose:** `docker compose up -d` (includes Postgres + sets `DATABASE_URL` automatically).
+- **Local:** no `DATABASE_URL` needed — SQLite is used automatically.
+
+## Quick start (local)
 
 ```bash
 cd license-server
@@ -14,6 +27,16 @@ npm run generate-keys   # only if keys/ is empty
 npm run create-license -- DEMO-LICENSE-001 3 30 "30-day trial"
 npm start
 ```
+
+## Deploy on Coolify (one command)
+
+```bash
+docker compose up -d --build   # local test with Postgres
+```
+
+For Coolify cloud: connect GitHub repo → Dockerfile build → add PostgreSQL → set `ADMIN_SECRET` → mount `/app/keys` volume.
+
+Full guide: **[COOLIFY.md](./COOLIFY.md)**
 
 Server runs on **port 3847** by default (`http://YOUR_SERVER:3847`).
 

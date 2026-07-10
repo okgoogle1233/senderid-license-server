@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.env
+data
+keys/private.pem
+*.db
+.git
+.gitignore
+README.md
+COOLIFY.md
+docker-compose.yml

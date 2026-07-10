@@ -1,0 +1,35 @@
+services:
+  license-server:
+    build: .
+    ports:
+      - "3847:3847"
+    environment:
+      PORT: 3847
+      ADMIN_SECRET: ${ADMIN_SECRET:-change-me-in-production}
+      DATABASE_URL: postgres://license:license@postgres:5432/license
+      ALLOWED_APK_SIGNATURES: ${ALLOWED_APK_SIGNATURES:-}
+    volumes:
+      - license_keys:/app/keys
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: license
+      POSTGRES_PASSWORD: license
+      POSTGRES_DB: license
+    volumes:
+      - license_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U license -d license"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  license_keys:
+  license_pg:
