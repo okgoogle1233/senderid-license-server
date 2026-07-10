@@ -40,6 +40,16 @@ Full guide: **[COOLIFY.md](./COOLIFY.md)**
 
 Server runs on **port 3847** by default (`http://YOUR_SERVER:3847`).
 
+## Admin web UI
+
+Open **`/admin/`** in a browser (e.g. `https://license.yourdomain.com/admin/`).
+
+1. Sign in with your **`ADMIN_SECRET`**
+2. Create licenses (key, label, max devices, valid days)
+3. View / revoke licenses and individual devices
+
+Session lasts 24 hours (configurable via `ADMIN_SESSION_TTL_SEC`).
+
 ## Day-based licenses
 
 Each license can have a **`validDays`** duration. Important rules:

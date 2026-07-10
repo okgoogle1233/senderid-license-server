@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>License Admin — SMS Sender ID Injector</title>
+  <link rel="stylesheet" href="/admin/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Login -->
+    <section id="loginView" class="panel login-panel">
+      <div class="brand">
+        <div class="logo">⚡</div>
+        <h1>License Admin</h1>
+        <p>SMS Sender ID Injector</p>
+      </div>
+      <form id="loginForm">
+        <label for="adminSecret">Admin secret</label>
+        <input id="adminSecret" type="password" placeholder="ADMIN_SECRET from server env" autocomplete="current-password" required />
+        <p id="loginError" class="error hidden"></p>
+        <button type="submit" class="btn primary">Sign in</button>
+      </form>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dashView" class="hidden">
+      <header class="topbar">
+        <div>
+          <h1>License management</h1>
+          <p class="muted">Create, monitor, and revoke device licenses</p>
+        </div>
+        <button id="logoutBtn" class="btn ghost">Sign out</button>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Create license</h2>
+          <form id="createForm" class="form-grid">
+            <div class="field">
+              <label>License key</label>
+              <input id="newKey" required minlength="8" placeholder="USER-30D-001" />
+            </div>
+            <div class="field">
+              <label>Label</label>
+              <input id="newLabel" placeholder="Customer name" />
+            </div>
+            <div class="field">
+              <label>Max devices</label>
+              <input id="newMax" type="number" min="1" value="1" />
+            </div>
+            <div class="field">
+              <label>Valid days (0 = lifetime)</label>
+              <input id="newDays" type="number" min="0" value="30" />
+            </div>
+            <div class="field span2">
+              <button type="submit" class="btn primary">Create license</button>
+            </div>
+          </form>
+          <p id="createMsg" class="msg hidden"></p>
+        </div>
+
+        <div class="card span2">
+          <div class="card-head">
+            <h2>Licenses</h2>
+            <button id="refreshBtn" class="btn ghost sm">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Key</th>
+                  <th>Label</th>
+                  <th>Devices</th>
+                  <th>Duration</th>
+                  <th>Expires</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="licenseRows">
+                <tr><td colspan="7" class="muted center">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="devicesPanel" class="card hidden">
+        <div class="card-head">
+          <h2>Devices — <span id="devicesLicenseKey"></span></h2>
+          <button id="closeDevices" class="btn ghost sm">Close</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Device hash</th>
+                <th>APK signature</th>
+                <th>Last seen</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="deviceRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="/admin/app.js"></script>
+</body>
+</html>

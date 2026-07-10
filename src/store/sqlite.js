@@ -144,6 +144,12 @@ async function listLicenses() {
   `).all();
 }
 
+async function listDevices(licenseId) {
+  return db.prepare(
+      'SELECT * FROM devices WHERE license_id = ? ORDER BY last_seen_at DESC, id DESC'
+  ).all(licenseId);
+}
+
 async function revokeLicense(licenseKey) {
   const lic = await findLicense(licenseKey);
   if (!lic) return false;
@@ -176,6 +182,7 @@ module.exports = {
   touchDevice,
   logActivation,
   listLicenses,
+  listDevices,
   revokeLicense,
   revokeDevice,
 };

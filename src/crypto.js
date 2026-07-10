@@ -44,9 +44,25 @@ function verifyToken(token) {
   return jwt.verify(token, getPublicKey(), { algorithms: ['RS256'] });
 }
 
+/** Short-lived admin UI session (HS256, signed with ADMIN_SECRET). */
+function signAdminSession(adminSecret, ttlSec = 86400) {
+  return jwt.sign({ typ: 'admin' }, adminSecret, {
+    algorithm: 'HS256',
+    expiresIn: ttlSec,
+  });
+}
+
+function verifyAdminSession(token, adminSecret) {
+  const claims = jwt.verify(token, adminSecret, { algorithms: ['HS256'] });
+  if (claims.typ !== 'admin') throw new Error('invalid admin token');
+  return claims;
+}
+
 module.exports = {
   getPublicKey,
   signLicenseToken,
   signInjectToken,
   verifyToken,
+  signAdminSession,
+  verifyAdminSession,
 };

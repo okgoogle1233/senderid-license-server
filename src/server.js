@@ -2,6 +2,7 @@
 
 require('dotenv').config();
 
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const crypto = require('./crypto');
@@ -11,15 +12,18 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 const port = parseInt(process.env.PORT || '3847', 10);
+const publicDir = path.join(__dirname, '..', 'public');
 
 app.use(cors());
 app.use(express.json({ limit: '32kb' }));
+app.use('/admin', express.static(path.join(publicDir, 'admin')));
 
 app.get('/', (_req, res) => {
   res.json({
     ok: true,
     service: 'senderid-license-server',
     status: 'running',
+    adminUi: '/admin/',
     endpoints: {
       health: 'GET /health',
       publicKey: 'GET /api/license/public-key',
@@ -28,6 +32,10 @@ app.get('/', (_req, res) => {
       admin: 'POST /api/admin/licenses (Bearer ADMIN_SECRET)',
     },
   });
+});
+
+app.get('/admin', (_req, res) => {
+  res.sendFile(path.join(publicDir, 'admin', 'index.html'));
 });
 
 app.get('/health', (_req, res) => {
@@ -58,6 +66,7 @@ async function main() {
   app.listen(port, '0.0.0.0', () => {
     console.log(`License server listening on http://0.0.0.0:${port}`);
     console.log(`Database: ${driver}`);
+    console.log(`Admin UI:  http://0.0.0.0:${port}/admin/`);
     console.log('Health: GET /health');
   });
 }

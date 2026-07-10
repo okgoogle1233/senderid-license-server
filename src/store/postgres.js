@@ -167,6 +167,16 @@ async function listLicenses() {
   return rows;
 }
 
+async function listDevices(licenseId) {
+  const { rows } = await pool.query(
+      `SELECT * FROM ${tbl('devices')}
+       WHERE license_id = $1
+       ORDER BY last_seen_at DESC NULLS LAST, id DESC`,
+      [licenseId]
+  );
+  return rows;
+}
+
 async function revokeLicense(licenseKey) {
   const lic = await findLicense(licenseKey);
   if (!lic) return false;
@@ -200,6 +210,7 @@ module.exports = {
   touchDevice,
   logActivation,
   listLicenses,
+  listDevices,
   revokeLicense,
   revokeDevice,
 };
